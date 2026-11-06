@@ -107,6 +107,7 @@ def sentences_table(documents: list) -> pd.DataFrame:
              "sentence_offset", "sentence_length"]]
     return df
 
+
 def opinions_table(documents: list) -> pd.DataFrame:
     """One row per opinion target, with the words that carry the opinion.
 
@@ -131,7 +132,37 @@ def opinions_table(documents: list) -> pd.DataFrame:
     `pd.DataFrame(rows, columns=[...the seven names...])`, so a set of reviews
     with no targets still gives a table with the right columns.
     """
-    df = 
+    opinions = []
+    for document in documents:
+        review_id = document["review_id"]
+        for sentence_id, sentence in enumerate(document["sentences"]):
+            assessments = sentence.get("assessments", [])
+            for target in sentence.get("targets", []):
+                mention = target["text"]
+                mention_sentiment = target["sentiment"]
+                mention_offset = target["offset"]
+                assessment_texts = []
+                source = "opinion"
+                for relation in target.get("relations", []):
+                    if relation["relationType"] == "assessment":
+                        ref = relation["ref"]
+                        # Extract the assessment index from the ref string
+                        assessment_index = int(ref.split("/")[-1])
+                        if 0 <= assessment_index < len(assessments):
+                            assessment_texts.append(assessments[assessment_index]["text"])
+                assessments_str = ", ".join(assessment_texts)
+                opinions.append({
+                    "review_id": review_id,
+                    "sentence_id": sentence_id,
+                    "mention": mention,
+                    "mention_sentiment": mention_sentiment,
+                    "assessments": assessments_str,
+                    "mention_offset": mention_offset,
+                    "source": source
+                })
+    return pd.DataFrame(opinions, columns=["review_id", "sentence_id", "mention",
+                                           "mention_sentiment", "assessments",
+                                           "mention_offset", "source"])
 
 
 def entities_table(documents: list) -> pd.DataFrame:
@@ -146,8 +177,13 @@ def entities_table(documents: list) -> pd.DataFrame:
     `.isin(MENTION_CATEGORIES)` on `entity_category`. A document with no
     entities contributes no rows, which `json_normalize` handles for you.
     """
-    # TODO: your code here
-    pass
+    df = pd.json_normalize(documents,
+                           record_path="entities",
+                           meta=["review_id"],
+                           record_prefix="entity_")
+    df = df[df["entity_category"].isin(MENTION_CATEGORIES)].reset_index(drop=True)
+    df = df[["review_id", "entity_text", "entity_category", "entity_offset"]]
+    return df
 
 
 def subjects_step(reviews: pd.DataFrame, mentions: pd.DataFrame,
@@ -169,5 +205,29 @@ def subjects_step(reviews: pd.DataFrame, mentions: pd.DataFrame,
     cache when the request is exactly the same, so the same reviews must
     produce the same list every time.
     """
-    # TODO: your code here
-    pass
+    if os.path.exists(cache_file):
+        return pd.read_csv(cache_file)
+    row = []
+    for review in reviews.to_dict("records"):
+        review_id = review["review_id"]
+        review_text = review["text"]
+        review_mentions = mentions[mentions["review_id"] == review_id]
+        review_mentions = review_mentions.sort_values("mention_offset")
+        review_mentions = review_mentions.drop_duplicates("mention")
+        mention_list = review_mentions["mention"].tolist()
+        if mention_list:
+            response = classify_mentions(review_text, mention_list)
+            for mention in mention_list:
+                answer = response["answers"].get(mention, {})
+                subject = answer.get("choice", "")
+                confidence = answer.get("confidence", 0.0)
+                row.append({
+                    "review_id": review_id,
+                    "mention": mention,
+                    "subject": subject,
+                    "subject_confidence": confidence
+                })
+    df = pd.DataFrame(row, columns=["review_id", "mention", "subject",
+                                             "subject_confidence"])
+    df.to_csv(cache_file, index=False)
+    return df
