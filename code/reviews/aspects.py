@@ -146,18 +146,17 @@ def analyze_reviews(reviews_file: str) -> pd.DataFrame:
     `build_mentions` with `load_aliases()`. Call the functions; do not redo them.
     """
     df = pd.read_csv(reviews_file)
+    aliases = load_aliases()
     sentiment = sentiment_step(df, cache_path(reviews_file, "sentiment"))
     entity = entities_step(df, cache_path(reviews_file, "entities"))
+    sentences = sentences_table(sentiment)
     opinions = opinions_table(sentiment)
     entities = entities_table(entity)
-    reviews = sentences_table(sentiment)
-    entity_rows = entity_mentions(entities, reviews, opinions)
-    subjects = subjects_step(df, build_mentions(df, reviews, opinions, entity_rows,
-                                                pd.DataFrame(), load_aliases()),
-                            cache_path(reviews_file, "subjects", "csv"))
-    df = build_mentions(df, reviews, opinions, entity_rows, subjects,
-                          load_aliases())
-    return df
+    entity_rows = entity_mentions(entities, sentences, opinions)
+    combined = pd.concat([opinions, entity_rows], ignore_index=True)
+    subjects = subjects_step(df, combined, cache_path(reviews_file, "subjects", "csv"))
+    mentions = build_mentions(df, sentences, opinions, entity_rows, subjects, aliases)
+    return mentions
 
 
 def summarize_items(mentions: pd.DataFrame) -> pd.DataFrame:
@@ -182,14 +181,17 @@ def summarize_items(mentions: pd.DataFrame) -> pd.DataFrame:
     - **Engineer** `net` = `positive` - `negative`: one number that says whether
       an item is loved or a problem.
     """
-    table = pd.pivot_table(mentions, index=["subject", "items"], 
-                           columns ="mention_sentiment", aggfunc="size", 
+    table = pd.pivot_table(mentions, index=["subject", "item"],
+                           columns="mention_sentiment", aggfunc="size",
                            fill_value=0)
     table["mentions"] = table.sum(axis=1)
     table["positive"] = table.get("positive", 0)
     table["negative"] = table.get("negative", 0)
     table["net"] = table["positive"] - table["negative"]
-    return table.reset_index()[["subject", "item", "mentions", "positive", "negative", "net"]]
+    return table.reset_index()[["subject", "item", "mentions", "positive",
+                                "negative", "net"]].sort_values(
+                                    ["mentions", "item"], ascending=[False, True]
+                                ).reset_index(drop=True)
 
 
 # --- The Q&A box --------------------------------------------------------------------
@@ -301,8 +303,35 @@ def build_messages(question: str, evidence: pd.DataFrame, limit: int = 20) -> li
     language model only writes the answer. Language models are bad at counting
     and good at prose — give each the job it is good at.
     """
-    # TODO: your code here
-    pass
+    summary = summarize_items(evidence)
+    counts = (f"{len(evidence)} mentions — "
+              f"{evidence['mention_sentiment'].value_counts().get('positive',
+                                                                  0)} positive, "
+              f"{evidence['mention_sentiment'].value_counts().get('negative',
+                                                                  0)} negative, "
+              f"{evidence['mention_sentiment'].value_counts().get('neutral',
+                                                                  0) + evidence[
+                'mention_sentiment'].value_counts().get('mixed', 0)} neutral or mixed.")
+    item_lines = [f"- {row['item']} ({row['subject']}): {row['mentions']} mentions,{row[
+                'positive']} positive,{row['negative']} negative, net {row['net']:+d}"
+                  for _, row in summary.iterrows()]
+    sentence_lines = [f"- ({row['location']}, {row['date']}, {row['item']}, {row[
+        'mention_sentiment']}) {row['sentence_text']}"
+                      for _, row in evidence.head(limit).iterrows()]
+
+    user_content = "\n".join([
+        f"Question: {question}",
+        f"Facts: {counts}",
+        "Items, most mentioned first:",
+        *item_lines,
+        "Review sentences:",
+        *sentence_lines
+    ])
+
+    return [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": user_content}
+    ]
 
 
 def answer_question(question: str, mentions: pd.DataFrame, aliases: dict):
