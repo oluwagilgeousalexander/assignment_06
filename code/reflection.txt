@@ -5,4 +5,6 @@ confidential for security. In this assignment, we keep it secure
 by ensure that it does not show up in any public facing code by
 keeping it in a .env file. Something I'm still struggling with is the 
 creation of dataframes and classifying rows/columns that was present 
-throughout aspects.py and pipeline.py.
+throughout aspects.py and pipeline.py. I should be more attentive with the data
+that is presented before creating the dataframes so that I know what I am 
+cleaning the data for.

@@ -126,49 +126,49 @@ from reviews import (
 # What the page does NOT do: call the API directly, group or pivot, or build the
 # prompt itself. That logic lives in the package; the page only assembles it.
 
-#step 1
+# step 1
 reviews_file = os.environ.get("REVIEWS_FILE", REVIEWS_FILE)
 
-#step 2
+# step 2
 st.title("Salt City Coffee — What Customers Are Saying")
-st.markdown("Broken down info from customer reviews, by location and range. " 
+st.markdown("Broken down info from customer reviews, by location and range. "
 "Questions can be asked at the bottom")
 
-#step 3
+# step 3
 mentions = analyze_reviews(reviews_file)
 
-#step 4
+# step 4
 loc_column, sub_column = st.columns(2)
 location = loc_column.selectbox(
-    "Location", ["ALL"]+ 
+    "Location", ["ALL"] +
     sorted(mentions["location"].unique()),
      key="location")
 
 subject = sub_column.selectbox(
-    "Subject", ["ALL"]+ 
+    "Subject", ["ALL"] +
     sorted(mentions["subject"].unique()),
       key="subject"
 )
 
-selected = mentions 
+selected = mentions
 if location != "ALL":
     selected = selected[selected["location"] == location]
 if subject != "ALL":
     selected = selected[selected["subject"] == subject]
 
-#step 5 
+# step 5
 review_column, mention_column, positive_column, negative_column = st.columns(4)
 
 review_column.metric("Reviews", int(selected["review_id"].nunique()))
 mention_column.metric("Mentions", len(selected))
 positive_column.metric(
-    "Positive", 
+    "Positive",
     int((selected["mention_sentiment"] == "positive").sum()))
 negative_column.metric(
-    "Negative", 
+    "Negative",
     int((selected["mention_sentiment"] == "negative").sum()))
 
-#step 6
+# step 6
 summary = summarize_items(selected)
 praised_tab, complained_tab, said_tab = st.tabs(
     ["Most praised", "Most complained about", "What people said"]
@@ -184,7 +184,7 @@ said_tab.dataframe(
                   "assessments", "sentence_text"]],
     hide_index=True)
 
-#step 7 
+# step 7
 st.subheader("Ask the reviews")
 question = st.text_input(
     label="Your question",
@@ -192,22 +192,20 @@ question = st.text_input(
     placeholder="What is the least popular product")
 asked = st.button(label="Ask", key="ask")
 
-#step 8
+# step 8
 if asked and question.strip():
     scope, evidence = answer_question(question, mentions, load_aliases())
     if evidence.empty:
         st.warning(
-            f"No review describe_scope(scope). Perhaps try a menu item,"
-            "staff member, or part of the shop"
-            )
+            f"No review {describe_scope(scope)}. Perhaps try a menu item, "
+            "staff member, or part of the shop")
     else:
         message = build_messages(question, evidence)
         with st.spinner("Asking the model..."):
             answer = ask_llm(message)
         st.markdown(answer)
-        st.caption("Based on <number of evidence rows> mentions —"
-            "<describe_scope(scope)>:")
+        st.caption(f"Based on {len(evidence)} mentions — {describe_scope(scope)}:")
         st.dataframe(
             evidence[["date", "location", "item",
             "mention_sentiment", "sentence_text"]],
-            hide_index=True)
+        hide_index=True)
