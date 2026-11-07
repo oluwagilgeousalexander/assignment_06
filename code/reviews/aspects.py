@@ -145,8 +145,19 @@ def analyze_reviews(reviews_file: str) -> pd.DataFrame:
     (cached with `cache_path(reviews_file, "subjects", "csv")`), and finally
     `build_mentions` with `load_aliases()`. Call the functions; do not redo them.
     """
-    # TODO: your code here
-    pass
+    df = pd.read_csv(reviews_file)
+    sentiment = sentiment_step(df, cache_path(reviews_file, "sentiment"))
+    entity = entities_step(df, cache_path(reviews_file, "entities"))
+    opinions = opinions_table(sentiment)
+    entities = entities_table(entity)
+    reviews = sentences_table(sentiment)
+    entity_rows = entity_mentions(entities, reviews, opinions)
+    subjects = subjects_step(df, build_mentions(df, reviews, opinions, entity_rows,
+                                                pd.DataFrame(), load_aliases()),
+                            cache_path(reviews_file, "subjects", "csv"))
+    df = build_mentions(df, reviews, opinions, entity_rows, subjects,
+                          load_aliases())
+    return df
 
 
 def summarize_items(mentions: pd.DataFrame) -> pd.DataFrame:
@@ -171,8 +182,14 @@ def summarize_items(mentions: pd.DataFrame) -> pd.DataFrame:
     - **Engineer** `net` = `positive` - `negative`: one number that says whether
       an item is loved or a problem.
     """
-    # TODO: your code here
-    pass
+    table = pd.pivot_table(mentions, index=["subject", "items"], 
+                           columns ="mention_sentiment", aggfunc="size", 
+                           fill_value=0)
+    table["mentions"] = table.sum(axis=1)
+    table["positive"] = table.get("positive", 0)
+    table["negative"] = table.get("negative", 0)
+    table["net"] = table["positive"] - table["negative"]
+    return table.reset_index()[["subject", "item", "mentions", "positive", "negative", "net"]]
 
 
 # --- The Q&A box --------------------------------------------------------------------
