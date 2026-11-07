@@ -103,8 +103,7 @@ def item_name(mention: str, aliases: dict) -> str:
         item_name("Parking downtown", aliases)  ->  "parking"
         item_name("Mocha Latte", aliases)        ->  "mocha latte"   # not an alias
     """
-    # TODO: your code here
-    pass
+    return aliases.get(mention.lower(), mention.lower()).strip()
 
 
 def build_mentions(reviews: pd.DataFrame, sentences: pd.DataFrame,
@@ -124,8 +123,17 @@ def build_mentions(reviews: pd.DataFrame, sentences: pd.DataFrame,
     cortado" both becoming "oat milk cortado"). Sorted by `review_id` then
     `mention_offset`, plain index.
     """
-    # TODO: your code here
-    pass
+    df = pd.concat([opinions, entity_rows], ignore_index=True)
+    df = pd.merge(df, subjects, on=["review_id", "mention"], how="left")
+    df = pd.merge(df, sentences, on=["review_id", "sentence_id"], how="left")
+    df = pd.merge(df, reviews, on="review_id", how="left")
+    df["item"] = df["mention"].apply(lambda m: item_name(m, aliases))
+    df = df[df["subject"] != "other"]
+    df = df.drop_duplicates(subset=["review_id", "sentence_id", "item"])
+    df = df.sort_values(["review_id", "mention_offset"]).reset_index(drop=True)
+    return df[["review_id", "date", "location", "stars", "item", "mention",
+               "subject", "mention_sentiment", "assessments", "sentence_text",
+               "source", "subject_confidence"]]
 
 
 def analyze_reviews(reviews_file: str) -> pd.DataFrame:
