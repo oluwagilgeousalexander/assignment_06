@@ -1,11 +1,9 @@
-Something that I learned while working on this assignment was why and 
-how you keep an api key private. The api key is what allows you to make 
-calls to an application and identity you as a user, and must be kept
-confidential for security. In this assignment, we keep it secure
-by ensuring that it does not show up in any public facing code by
-keeping it in a .env file. Something I'm still struggling with is the 
-creation of dataframes and classifying rows/columns that was present 
-throughout aspects.py and pipeline.py. I will be more attentive with the data
-that is presented and read through the instructions for what is necesssary 
-before creating the dataframes so that I know what I am 
-cleaning the data for.
+Something I learned while working on this assignment is why and how to keep an API key private. 
+The API key identifies me as a user and allows me to make calls to an application, so it must stay confidential. 
+In this assignment, I kept it out of any public-facing code by storing it in a .env file, which is listed in .gitignore so it is never committed. 
+Something I am still struggling with is creating DataFrames and deciding how rows and columns should be structured, which came up throughout aspects.py and pipeline.py. 
+To improve, I will practice one skill: identifying the grain of a table, meaning what one row represents, before I write any code. 
+For each step, I will write down the row definition I expect (for example, “one row per sentence” or “one row per mention”). 
+After the step, I will check it with .shape, .columns and .head(). 
+I will practice by rebuilding sentences_table, opinions_table and entities_table from the recorded fixtures, 
+without looking at my finished code, and I will compare each result against the row counts in the tests.
