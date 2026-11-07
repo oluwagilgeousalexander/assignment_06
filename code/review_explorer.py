@@ -125,3 +125,16 @@ from reviews import (
 #
 # What the page does NOT do: call the API directly, group or pivot, or build the
 # prompt itself. That logic lives in the package; the page only assembles it.
+
+#step 1
+reviews_file = os.environ.get("REVIEWS_FILE", REVIEWS_FILE)
+
+#step 2
+st.title("Salt City Coffee - What Customers Are Saying")
+st.markdown("Broken down info from customer reviews, by location and range." \
+"Questions can be asked at the bottom")
+
+#step 3
+mentions = analyze_reviews(reviews_file)
+
+#step 4
