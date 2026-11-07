@@ -335,6 +335,7 @@ def build_messages(question: str, evidence: pd.DataFrame, limit: int = 20) -> li
         {"role": "user", "content": user_content},
     ]
 
+
 def answer_question(question: str, mentions: pd.DataFrame, aliases: dict):
     """What a question is about and the evidence for it: (scope, evidence)."""
     document = get_entities(question)["results"]["documents"][0]

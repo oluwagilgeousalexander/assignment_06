@@ -50,7 +50,7 @@ def get_sentiment(text: str) -> dict:
     """
     url = f"{BASE_URL}/api/azure/sentiment"
     headers = {"X-API-KEY": get_api_key()}
-    response = requests.post(url, headers=headers, data={"text": text})
+    response = requests.post(url, headers=headers, data={"text": text}, timeout=30)
     response.raise_for_status()
     return response.json()
 
@@ -70,7 +70,7 @@ def get_entities(text: str) -> dict:
     """
     url = f"{BASE_URL}/api/azure/entityrecognition"
     headers = {"X-API-KEY": get_api_key()}
-    response = requests.post(url, headers=headers, data={"text": text})
+    response = requests.post(url, headers=headers, data={"text": text}, timeout=30)
     response.raise_for_status()
     return response.json()
 
@@ -105,7 +105,7 @@ def classify_mentions(review_text: str, mentions: list) -> dict:
     headers = {"X-API-KEY": get_api_key()}
     body = {"state": {"review": review_text},
             "questions": subject_questions(mentions)}
-    response = requests.post(url, headers=headers, json=body)
+    response = requests.post(url, headers=headers, json=body, timeout=30)
     response.raise_for_status()
     return response.json()
 
@@ -135,6 +135,7 @@ def ask_llm(messages: list) -> str:
     url = f"{BASE_URL}/api/azure/foundry/chat/completions"
     headers = {"X-API-KEY": get_api_key()}
     params = {"model": LLM_MODEL, "reasoning_effort": LLM_REASONING_EFFORT}
-    response = requests.post(url, headers=headers, json=messages, params=params)
+    response = requests.post(url, headers=headers, json=messages, params=params,
+                             timeout=30)
     response.raise_for_status()
     return response.json()["choices"][0]["message"]["content"]

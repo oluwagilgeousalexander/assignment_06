@@ -1,7 +1,8 @@
-Write your reflection here.
-
-See reflection.md for what makes a good reflection — be specific, use the
-terminology from this assignment (REST API, endpoint, HTTP status code,
-raise_for_status, API key, form data vs. JSON body, rate limit, caching,
-json_normalize, record_path, meta, grain, opinion mining, named-entity
-recognition, prompt, system prompt, reasoning model), and make it actionable.
+Something that I learned while working on this assignment was why and 
+how you keep an api key private. The api key is what allows you to make 
+calls to an application and identity you as a user, and must be kept
+confidential for security. In this assignment, we keep it secure
+by ensure that it does not show up in any public facing code by
+keeping it in a .env file. Something I'm still struggling with is the 
+creation of dataframes and classifying rows/columns that was present 
+throughout aspects.py and pipeline.py.
