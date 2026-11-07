@@ -304,38 +304,33 @@ def build_messages(question: str, evidence: pd.DataFrame, limit: int = 20) -> li
     and good at prose — give each the job it is good at.
     """
     summary = summarize_items(evidence)
-    counts = (f"{len(evidence)} mentions — "
-              f"{evidence['mention_sentiment'].value_counts().get('positive',
-                                                                  0)} positive, "
-              f"{evidence['mention_sentiment'].value_counts().get('negative',
-                                                                  0)} negative, "
-              f"{evidence['mention_sentiment'].value_counts().get('neutral',
-                                                                  0) + evidence[
-                'mention_sentiment'].value_counts().get('mixed', 0)} neutral or mixed.")
-    item_lines = [f"- {row['item']} ({row['subject']}): {row['mentions']} mentions,{row[
-                'positive']} positive,{row['negative']} negative, net {row['net']:+d}"
-                  for _, row in summary.iterrows()]
-    sentence_lines = [f"- ({row['location']}, {row['date']}, {row['item']}, {row[
-        'mention_sentiment']}) {row['sentence_text']}"
-                      for _, row in evidence.head(limit).iterrows()]
+    sentiments = evidence["mention_sentiment"].value_counts()
+    total = len(evidence)
+    positive = int(sentiments.get("positive", 0))
+    negative = int(sentiments.get("negative", 0))
+    other = total - positive - negative
+
+    item_lines = [
+        f"- {row['item']} ({row['subject']}): {row['mentions']} mentions, "
+        f"{row['positive']} positive, {row['negative']} negative, net {row['net']:+d}"
+        for _, row in summary.iterrows()
+    ]
+    sentence_lines = [
+        f"- ({row['location']}, {row['date']}, {row['item']}, "
+        f"{row['mention_sentiment']}) {row['sentence_text']}"
+        for _, row in evidence.head(limit).iterrows()
+    ]
 
     user_content = "\n".join([
         f"Question: {question}",
-        f"Facts: {counts}",
+        f"Facts: {total} mentions — {positive} positive, {negative} negative, "
+        f"{other} neutral or mixed.",
         "Items, most mentioned first:",
         *item_lines,
         "Review sentences:",
-        *sentence_lines
+        *sentence_lines,
     ])
-
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": user_content}
+        {"role": "user", "content": user_content},
     ]
-
-
-def answer_question(question: str, mentions: pd.DataFrame, aliases: dict):
-    """What a question is about and the evidence for it: (scope, evidence)."""
-    document = get_entities(question)["results"]["documents"][0]
-    scope = question_scope(question, document, mentions, aliases)
-    return scope, evidence_for(mentions, scope)
